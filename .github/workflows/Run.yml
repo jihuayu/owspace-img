@@ -1,0 +1,60 @@
+name: Download Calendar Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Start date (YYYY-MM-DD)'
+        required: true
+        default: '2015-02-18'
+      end_date:
+        description: 'End date (YYYY-MM-DD)'
+        required: true
+        default: '2025-12-31'
+      max_workers:
+        description: 'Maximum concurrent downloads'
+        required: false
+        default: '20'
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: |
+        poetry install
+
+    - name: Prepare directory structure
+      run: |
+        # Create directory for images
+        sudo mkdir -p ./img
+        sudo chmod 777 ./img
+
+    - name: Run download script
+      env:
+        START_DATE: ${{ github.event.inputs.start_date }}
+        END_DATE: ${{ github.event.inputs.end_date }}
+        MAX_WORKERS: ${{ github.event.inputs.max_workers }}
+      run: |
+        poetry run python main.py
+
+    - name: Upload images
+      uses: actions/upload-artifact@v4
+      with:
+        name: calendar-images-${{ github.event.inputs.start_date }}-to-${{ github.event.inputs.end_date }}
+        path: ./img
+        retention-days: 5
